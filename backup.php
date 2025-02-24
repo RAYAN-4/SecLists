@@ -100,7 +100,7 @@ if (isset($_POST['send_email'])) {
 
 // 🔹 استعلامات قاعدة البيانات
 if (isset($_POST['sql_query'])) {
-    $conn = new mysqli("localhost", "u210490590_nsqli", "U210490590_nsqli", "u210490590_nsqli");
+    $conn = new mysqli("localhost", "root", "", "your_database_name");
     if ($conn->connect_error) {
         die("❌ فشل الاتصال بقاعدة البيانات: " . $conn->connect_error);
     }
@@ -162,4 +162,3 @@ if (isset($_POST['sql_query'])) {
     <textarea name="sql_query" placeholder="أدخل استعلام SQL"></textarea>
     <input type="submit" value="تنفيذ">
 </form>
-

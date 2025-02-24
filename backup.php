@@ -5,9 +5,9 @@ $db_backup_file = 'db_backup_' . date('Y-m-d_H-i-s') . '.sql';
 
 // معلومات قاعدة البيانات
 $db_host = 'localhost';
-$db_user = 'root';  // عدل حسب إعداداتك
-$db_pass = '';      // عدل حسب إعداداتك
-$db_name = 'your_database_name'; // عدل حسب اسم قاعدة البيانات
+$db_user = 'u210490590_nsqli';  // عدل حسب إعداداتك
+$db_pass = 'U210490590_nsqli';      // عدل حسب إعداداتك
+$db_name = 'u210490590_nsqli'; // عدل حسب اسم قاعدة البيانات
 
 // الاتصال بقاعدة البيانات
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
